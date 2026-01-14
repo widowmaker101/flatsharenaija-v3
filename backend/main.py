@@ -6,6 +6,7 @@ app = FastAPI(title="FlatShareNaija API", description="AI-powered flat share bac
 app.include_router(users.router)
 app.include_router(listings.router)
 app.include_router(matching.router)
+app.include_router(payments.router)
 
 @app.get("/")
 def root():
