@@ -11,3 +11,8 @@ app.include_router(payments.router)
 @app.get("/")
 def root():
     return {"message": "Welcome to FlatShareNaija API"}
+
+# SocketIO for messaging
+from app.routers.messages import sio
+from socketio import ASGIApp
+app.mount("/ws", ASGIApp(sio))
