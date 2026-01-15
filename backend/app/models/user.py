@@ -8,3 +8,4 @@ class User(Base):
     hashed_password = Column(String)
     preferences = Column(JSON)  # For AI matching: lifestyle, etc.
     country = Column(String, default="ng")
+    is_verified = Column(Boolean, default=False)

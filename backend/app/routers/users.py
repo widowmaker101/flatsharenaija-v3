@@ -36,3 +36,30 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+
+@router.post("/verify/{user_id}")
+def send_verification_email(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Generate token (simple for example)
+    verification_token = create_access_token({"sub": user.email, "verify": True}, timedelta(minutes=30))
+    message = Mail(
+        from_email='no-reply@flatsharenaija.com',
+        to_emails=user.email,
+        subject='Verify Your Email',
+        html_content=f'<a href="http://localhost:3000/verify?token={verification_token}">Verify Email</a>'
+    )
+    try:
+        sg.send(message)
+        return {"detail": "Verification email sent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

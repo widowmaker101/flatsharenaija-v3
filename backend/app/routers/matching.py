@@ -2,12 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.models.user import User as UserModel
 from app.database import SessionLocal
-import aiohttp
-import os
-from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer, util
 
-load_dotenv()
-AI_API_KEY = os.getenv("AI_API_KEY")
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Local embedding model
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
@@ -23,19 +20,14 @@ async def get_matches(user_id: int, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user_prefs_str = str(user.preferences)
+    user_embedding = model.encode(user_prefs_str)
     candidates = db.query(UserModel).filter(UserModel.country == user.country, UserModel.id != user_id).all()
     matches = []
-    async with aiohttp.ClientSession() as session:
-        for candidate in candidates:
-            prompt = f"Compare roommate compatibility (0-100 score): User1 prefs: {user.preferences}, User2 prefs: {candidate.preferences}."
-            async with session.post("https://api.openai.com/v1/chat/completions",
-                                    headers={"Authorization": f"Bearer {AI_API_KEY}"},
-                                    json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}]}) as resp:
-                data = await resp.json()
-                try:
-                    score = int(data['choices'][0]['message']['content'].split()[0])
-                    if score > 70:
-                        matches.append({"candidate_id": candidate.id, "score": score})
-                except:
-                    pass  # Skip invalid responses
+    for candidate in candidates:
+        candidate_prefs_str = str(candidate.preferences)
+        candidate_embedding = model.encode(candidate_prefs_str)
+        score = util.cos_sim(user_embedding, candidate_embedding)[0][0].item() * 100  # 0-100 score
+        if score > 70:
+            matches.append({"candidate_id": candidate.id, "score": int(score)})
     return {"matches": matches}
