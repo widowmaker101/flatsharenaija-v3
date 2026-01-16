@@ -3,10 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User as UserModel
 from app.database import SessionLocal
 from sentence_transformers import SentenceTransformer, util
-
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Local embedding model
-  # Lazy load to save memory
-  model = SentenceTransformer("all-MiniLM-L6-v2") if "model" not in globals() else model
+from fastapi import HTTPException
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
@@ -23,6 +20,10 @@ async def get_matches(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user_prefs_str = str(user.preferences)
+    # Lazy load model to save memory
+    global model
+    if 'model' not in globals():
+        model = SentenceTransformer('all-MiniLM-L6-v2')
     user_embedding = model.encode(user_prefs_str)
     candidates = db.query(UserModel).filter(UserModel.country == user.country, UserModel.id != user_id).all()
     matches = []
