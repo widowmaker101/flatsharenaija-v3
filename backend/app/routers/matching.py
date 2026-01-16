@@ -5,6 +5,8 @@ from app.database import SessionLocal
 from sentence_transformers import SentenceTransformer, util
 
 model = SentenceTransformer('all-MiniLM-L6-v2')  # Local embedding model
+  # Lazy load to save memory
+  model = SentenceTransformer("all-MiniLM-L6-v2") if "model" not in globals() else model
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
