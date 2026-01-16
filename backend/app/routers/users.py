@@ -5,12 +5,12 @@ from app.schemas.user import UserCreate, User, Token
 from app.models.user import User as UserModel
 from app.utils.auth import get_password_hash, verify_password, create_access_token
 from app.database import SessionLocal
-from mailersend import emails
+from mailersend import MailerSendClient, EmailBuilder
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
-mailer = emails.NewEmail(os.getenv("MAILERSEND_API_KEY"))
+ms = MailerSendClient(api_key=os.getenv("MAILERSEND_API_KEY"))
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -44,23 +44,21 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/verify/{user_id}")
 def send_verification_email(user_id: int, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     verification_token = create_access_token({"sub": user.email, "verify": True}, timedelta(minutes=30))
-    mail_body = {}
-    mail_from = {"name": "FlatShareNaija", "email": "no-reply@flatsharenaija.com"}  # Verify domain in MailerSend
-    recipients = [{"email": user.email}]
-    personalization = [{"email": user.email, "data": {"token": verification_token}}]
-    mailer.set_mail_from(mail_from, mail_body)
-    mailer.set_mail_to(recipients, mail_body)
-    mailer.set_subject("Verify Your Email", mail_body)
-    mailer.set_html_content(f'<a href="http://localhost:3000/verify?token={verification_token}">Verify Email</a>', mail_body)
-    mailer.set_advanced_personalization(personalization, mail_body)
+    email = (
+        EmailBuilder()
+        .from_email("no-reply@flatsharenaija.com", "FlatShareNaija")
+        .to_many([{"email": user.email, "name": user.email.split('@')[0]}])
+        .subject("Verify Your Email")
+        .html(f'<a href="http://localhost:3000/verify?token={verification_token}">Verify Email</a>')
+        .build()
+    )
     try:
-        mailer.send(mail_body)
-        return {"detail": "Verification email sent"}
+        response = ms.emails.send(email)
+        return {"detail": "Verification email sent", "response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
