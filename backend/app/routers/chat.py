@@ -7,7 +7,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 class ChatRequest(BaseModel):
     message: str
 
-pipe = pipeline("text-generation", model="microsoft/Phi-3-mini-4k-instruct")  # Small local model
+pipe = pipeline("text-generation", model="distilgpt2")  # Small local model
 
 @router.post("/")
 def chat(request: ChatRequest):

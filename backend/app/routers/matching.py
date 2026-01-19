@@ -23,7 +23,7 @@ async def get_matches(user_id: int, db: Session = Depends(get_db)):
     # Lazy load model to save memory
     global model
     if 'model' not in globals():
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
     user_embedding = model.encode(user_prefs_str)
     candidates = db.query(UserModel).filter(UserModel.country == user.country, UserModel.id != user_id).all()
     matches = []
