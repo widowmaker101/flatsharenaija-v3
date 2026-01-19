@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import users, listings, matching, payments, payments, payments, payments
+from app.routers import users, listings, matching, payments
 
 app = FastAPI(title="FlatShareNaija API", description="AI-powered flat share backend for Nigeria")
 
